@@ -11,7 +11,7 @@
 ; S ::= S ; S | x := a | skip | while b do S | if b then S1 else S2
 
 ; semantic function for WHILE 
-(define ((interpret expr) env)
+(define ((interpret expr) [env (make-hash)])
   (match expr
     [(Numeral n) n]
     [(Boolean b) b]
@@ -25,15 +25,15 @@
            [v2 ((interpret a2) env)])
        (apply op (list v1 v2)))]
     [(UnaryExpr op a) (apply op (list ((interpret a) env)))]
-    [(If condition consequent alternate)
-     (if ((interpret condition) env)
-         ((interpret consequent) env)
-         ((interpret alternate) env))]
+    [(If b s1 s2)
+     (if ((interpret b) env)
+         ((interpret s1) env)
+         ((interpret s2) env))]
     [(Begin ss) (for/last ([s ss]) ((interpret s) env))]
-    [(While condition s)
+    [(While b s)
      (let while ()
        (cond 
-         [((interpret condition) env) 
+         [((interpret b) env) 
           ((interpret s) env)
           (while)]
          [else (void)]))]))
@@ -48,7 +48,7 @@
                (BinaryExpr + (Numeral 1) (Identifier 'x)))
                (make-hash '([x . 3])))
              "addition produces correct sum")
-  (check-exn exn:fail? (thunk ((interpret (Identifier 'x)) (make-hash))) "error on uninitialized variable access")
+  (check-exn exn:fail? (thunk ((interpret (Identifier 'x)))) "error on uninitialized variable access")
 
   ; while 
   (check-eq? 4 
@@ -56,8 +56,7 @@
                 (Begin (list (BinaryExpr ':= 'x (Numeral 3))
                              (While (BinaryExpr < (Identifier 'x) (Numeral 4))
                                     (BinaryExpr ':= 'x (BinaryExpr + (Identifier 'x) (Numeral 1))))
-                             (Identifier 'x))))
-              (make-hash))
+                             (Identifier 'x)))))
              "variables are not shadowed in while block")
   )
 
